@@ -1,0 +1,540 @@
+{% extends "layout.html" %}
+{% block title %}{{ issue['title'] }} · Issue #{{ issue['iid'] }}{% endblock %}
+{% block head %}
+<style>
+.highlight {
+  background: #0d1117;
+  color: #c9d1d9;
+  padding: 16px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 12px 0;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.highlight pre {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.body code {
+  background: #f6f8fa;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 85%;
+}
+
+.body pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.body table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+}
+
+.body table th,
+.body table td {
+  border: 1px solid #d0d7de;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.body table th {
+  background: #f6f8fa;
+  font-weight: 600;
+}
+
+.body blockquote {
+  border-left: 4px solid #d0d7de;
+  padding-left: 16px;
+  margin: 12px 0;
+  color: #57606a;
+}
+
+.task-list-item {
+  list-style: none;
+}
+
+.task-list-item-checkbox {
+  margin-right: 8px;
+}
+
+.gfm {
+  color: #0969da;
+  text-decoration: none;
+}
+
+.gfm:hover {
+  text-decoration: underline;
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="headerbar">
+    {% if issue['state'] == 'opened' %}
+      <span class="pill pill-open">Open</span>
+    {% else %}
+      <span class="pill pill-closed">{{ issue['state']|capitalize }}</span>
+    {% endif %}
+    <h1 class="header-title">{{ issue['title'] }}</h1>
+  </div>
+  <div class="header-sub small">
+    #{{ issue['iid'] }} · {{ issue['state'] }} · created {{ issue['created_at'] }}
+    by {{ issue.get('author',{}).get('username','?') }}
+    {% if issue['references'] and issue['references'].get('full') %}
+      · Ref <code>{{ issue['references']['full'] }}</code>
+    {% endif %}
+    · <a href="{{ url_for('list_issues') }}?project={{ project_id }}">Back to list</a>
+  </div>
+
+  <div class="grid" style="margin-top:12px">
+    <div class="main" id="main-content">
+      <div class="section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <h3>Description</h3>
+          <div class="resize-controls">
+            <button type="button" class="resize-btn" onclick="adjustWidth('narrow')" title="幅を狭く">◀</button>
+            <button type="button" class="resize-btn" onclick="adjustWidth('normal')" title="通常幅">▮</button>
+            <button type="button" class="resize-btn" onclick="adjustWidth('wide')" title="幅を広く">▶</button>
+            <button type="button" class="resize-btn" onclick="adjustWidth('full')" title="全幅">⬌</button>
+          </div>
+        </div>
+        {% if issue.get('description_html') %}
+          <div class="body media-enhanced">{{ issue['description_html']|safe }}</div>
+        {% elif issue.get('description') %}
+          <pre>{{ issue['description'] }}</pre>
+        {% else %}
+          <p class="meta">No description</p>
+        {% endif %}
+      </div>
+
+      <div class="section activity" style="margin-top:12px">
+        <h3>Activity</h3>
+        {% if notes %}
+          {% for n in notes %}
+            <div class="note">
+              <div class="meta">
+                {% if n.get('author',{}).get('avatar_url') %}
+                  <img class="avatar" src="{{ n['author']['avatar_url'] }}" alt="">
+                {% endif %}
+                <strong>@{{ n.get('author',{}).get('username','?') }}</strong>
+                <span>commented at {{ n['created_at'] }}</span>
+              </div>
+              <div class="body media-enhanced">
+                {% if n.get('body_html') %}
+                  {{ n['body_html']|safe }}
+                {% else %}
+                  <pre>{{ n['body'] }}</pre>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="meta">No comments.</p>
+        {% endif %}
+      </div>
+
+      <div class="section comment-form" style="margin-top:12px">
+        <h3>New comment</h3>
+        <form method="post" action="{{ url_for('comment_issue', project_id=project_id, iid=issue['iid']) }}">
+          <label for="body" class="small">Write a note</label>
+          <textarea id="body" name="body" rows="5" placeholder="Write a note…"></textarea>
+          <div class="actions">
+            <button type="submit">Comment</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <aside class="sidebar">
+      <div class="block">
+        <h4>Status</h4>
+        {% if issue['state'] == 'opened' %}
+          <span class="pill pill-open">Open</span>
+        {% else %}
+          <span class="pill pill-closed">{{ issue['state']|capitalize }}</span>
+        {% endif %}
+      </div>
+
+      <div class="block">
+        <h4>Assignees</h4>
+        {% if issue.get('assignees') %}
+          <div class="kv">
+            {% for a in issue['assignees'] %}
+              <div class="key">
+                {% if a.get('avatar_url') %}<img class="avatar" src="{{ a['avatar_url'] }}" alt="">{% endif %}
+              </div>
+              <div>@{{ a.get('username','?') }}</div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="meta">None</p>
+        {% endif %}
+      </div>
+
+      <div class="block">
+        <h4>Labels</h4>
+        {% if issue['labels'] %}
+          <div class="meta-list" style="display:flex;flex-wrap:wrap;gap:6px">
+            {% for lb in issue['labels'] %}
+              {% set c = label_map.get(lb, {'color':'#f1f5f9','text':'#000'}) %}
+              <span class="label-chip" style="background: {{ c.color }}; color: {{ c.text }}; border-color: {{ c.color }}">{{ lb }}</span>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="meta">None</p>
+        {% endif %}
+      </div>
+
+      <div class="block">
+        <h4>Iteration</h4>
+        {% if issue.get('iteration') %}
+          <div>{{ issue['iteration'].get('title','') }}</div>
+        {% else %}
+          <p class="meta">None</p>
+        {% endif %}
+      </div>
+
+      <div class="block">
+        <h4>Dates</h4>
+        {% if issue.get('due_date') or issue.get('created_at') or issue.get('updated_at') %}
+          <div class="small">
+            {% if issue.get('due_date') %}
+              <div><strong>期限:</strong> {{ issue['due_date']|format_date_jst }}</div>
+            {% endif %}
+            {% if issue.get('created_at') %}
+              <div><strong>作成:</strong> {{ issue['created_at']|format_datetime_jst }}</div>
+            {% endif %}
+            {% if issue.get('updated_at') %}
+              <div><strong>更新:</strong> {{ issue['updated_at']|format_datetime_jst }}</div>
+            {% endif %}
+          </div>
+        {% else %}
+          <p class="meta">None</p>
+        {% endif %}
+      </div>
+
+      <div class="block">
+        <h4>Parent</h4>
+        {% if issue.get('epic') %}
+          <div>
+            <a href="{{ issue['epic'].get('web_url', '#') }}" target="_blank" rel="noopener noreferrer">
+              {{ issue['epic'].get('title', 'Epic') }}
+            </a>
+          </div>
+        {% else %}
+          <p class="meta">None</p>
+        {% endif %}
+      </div>
+
+      <div class="block">
+        <h4>Weight</h4>
+        {% if issue.get('weight') %}
+          <div>{{ issue['weight'] }}</div>
+        {% else %}
+          <p class="meta">None</p>
+        {% endif %}
+      </div>
+
+      <div class="block">
+        <h4>Milestone</h4>
+        {% if issue.get('milestone') %}
+          <div>{{ issue['milestone'].get('title','') }}</div>
+        {% else %}
+          <p class="meta">None</p>
+        {% endif %}
+      </div>
+
+      <div class="block">
+        <h4>References</h4>
+        {% if issue['references'] and issue['references'].get('full') %}
+          <div>
+            <code>{{ issue['references']['full'] }}</code>
+            {% if issue.get('web_url') %}
+              <br>
+              <a href="{{ issue['web_url'] }}" target="_blank" rel="noopener noreferrer" style="font-size: 12px; color: #0969da;">
+                GitLab で開く →
+              </a>
+            {% endif %}
+          </div>
+        {% else %}
+          <p class="meta">None</p>
+        {% endif %}
+      </div>
+
+      <div class="block">
+        <h4>Tasks</h4>
+        {% set task_links = [] %}
+        {% for l in links %}
+          {% set t = l.get('target_issue', l) %}
+          {% if t.get('issue_type') in ['task', 'Task'] %}
+            {% set _ = task_links.append(t) %}
+          {% endif %}
+        {% endfor %}
+        {% if task_links %}
+          <ul class="small" style="padding-left:18px">
+            {% for t in task_links %}
+              <li><a href="{{ t.get('web_url') or (t.get('references', {}).get('full')) }}" target="_blank">#{{ t.get('iid') }} {{ t.get('title','') }}</a></li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="meta">No related tasks</p>
+        {% endif %}
+      </div>
+    </aside>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function adjustWidth(size) {
+  const mainContent = document.getElementById('main-content');
+  const grid = mainContent.parentElement;
+  
+  switch(size) {
+    case 'narrow':
+      grid.style.gridTemplateColumns = 'minmax(0, 0.7fr) 320px';
+      break;
+    case 'normal':
+      grid.style.gridTemplateColumns = 'minmax(0, 1fr) 320px';
+      break;
+    case 'wide':
+      grid.style.gridTemplateColumns = 'minmax(0, 1.5fr) 320px';
+      break;
+    case 'full':
+      grid.style.gridTemplateColumns = '1fr';
+      break;
+  }
+  
+  localStorage.setItem('issueViewWidth', size);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const savedWidth = localStorage.getItem('issueViewWidth');
+  if (savedWidth) {
+    adjustWidth(savedWidth);
+  }
+  
+  const gitlabBaseUrl = '{{ session.get("gl", {}).get("url", "") }}';
+  const projectId = '{{ project_id }}';
+  
+  console.log('GitLab Base URL:', gitlabBaseUrl);
+  console.log('Project ID:', projectId);
+  
+  const mediaContainers = document.querySelectorAll('.media-enhanced');
+  
+  mediaContainers.forEach(container => {
+    processAllMedia(container, gitlabBaseUrl, projectId);
+  });
+  
+  function processAllMedia(container, baseUrl, projectId) {
+    const images = container.querySelectorAll('img');
+    const links = container.querySelectorAll('a');
+    
+    images.forEach(img => {
+      if (!img.classList.contains('avatar') && !img.hasAttribute('data-processed')) {
+        img.setAttribute('data-processed', 'true');
+        let imgSrc = img.getAttribute('src') || img.src;
+        
+        console.log('Processing image:', imgSrc);
+        
+        if (imgSrc.startsWith('/uploads/')) {
+          imgSrc = `${baseUrl}/${projectId}${imgSrc}`;
+          img.src = imgSrc;
+          console.log('Converted to:', imgSrc);
+        }
+        
+        const isVideo = /\.(mp4|webm|ogg|mov|avi|mkv)(\?|$)/i.test(imgSrc);
+        
+        if (isVideo) {
+          console.log('Creating video element for:', imgSrc);
+          const video = document.createElement('video');
+          video.src = imgSrc;
+          video.controls = true;
+          video.style.maxWidth = '100%';
+          video.style.height = 'auto';
+          video.style.borderRadius = '4px';
+          video.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+          video.style.margin = '8px 0';
+          video.style.display = 'block';
+          img.parentNode.replaceChild(video, img);
+        } else {
+          img.style.maxWidth = '100%';
+          img.style.height = 'auto';
+          img.style.cursor = 'pointer';
+          img.style.borderRadius = '4px';
+          img.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+          img.style.margin = '8px 0';
+          img.addEventListener('click', function() {
+            openModal(this.src, 'image');
+          });
+        }
+      }
+    });
+    
+    links.forEach(link => {
+      if (!link.hasAttribute('data-processed')) {
+        link.setAttribute('data-processed', 'true');
+        let href = link.getAttribute('href') || link.href;
+        
+        console.log('Processing link:', href);
+        
+        if (href.startsWith('/uploads/')) {
+          href = `${baseUrl}/${projectId}${href}`;
+          link.href = href;
+          console.log('Converted link to:', href);
+        }
+        
+        if (!link.hasAttribute('target')) {
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+        }
+        
+        const isVideo = /\.(mp4|webm|ogg|mov|avi|mkv)(\?|$)/i.test(href);
+        const isImage = /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?|$)/i.test(href);
+        
+        if (isVideo) {
+          console.log('Creating video preview for link:', href);
+          const video = document.createElement('video');
+          video.src = href;
+          video.controls = true;
+          video.style.maxWidth = '100%';
+          video.style.height = 'auto';
+          video.style.marginTop = '8px';
+          video.style.borderRadius = '4px';
+          video.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+          video.style.display = 'block';
+          
+          const br = document.createElement('br');
+          link.parentNode.insertBefore(br, link.nextSibling);
+          link.parentNode.insertBefore(video, br);
+        } else if (isImage) {
+          const img = document.createElement('img');
+          img.src = href;
+          img.alt = link.textContent;
+          img.style.maxWidth = '100%';
+          img.style.height = 'auto';
+          img.style.cursor = 'pointer';
+          img.style.marginTop = '8px';
+          img.style.borderRadius = '4px';
+          img.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+          img.style.display = 'block';
+          img.addEventListener('click', function() {
+            openModal(this.src, 'image');
+          });
+          
+          const br = document.createElement('br');
+          link.parentNode.insertBefore(br, link.nextSibling);
+          link.parentNode.insertBefore(img, br);
+        }
+      }
+    });
+  }
+  
+  window.openModal = function(src, type) {
+    const modal = document.createElement('div');
+    modal.className = 'media-modal';
+    modal.innerHTML = `
+      <div class="modal-backdrop" onclick="closeModal(this)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+          ${type === 'image' ? 
+            `<img src="${src}" style="max-width: 90vw; max-height: 90vh;">` :
+            `<video src="${src}" controls autoplay style="max-width: 90vw; max-height: 90vh;">`
+          }
+          <button class="modal-close" onclick="closeModal(this)">&times;</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  };
+  
+  window.closeModal = function(element) {
+    const modal = element.closest('.media-modal');
+    if (modal) {
+      modal.remove();
+    }
+  };
+});
+</script>
+
+<style>
+.resize-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.resize-btn {
+  padding: 4px 8px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.2s ease;
+}
+
+.resize-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.resize-btn:active {
+  background: #e2e8f0;
+}
+
+.media-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+}
+
+.modal-backdrop {
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.modal-content {
+  position: relative;
+  cursor: default;
+}
+
+.modal-close {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close:hover {
+  background: white;
+}
+</style>
+{% endblock %}

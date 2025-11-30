@@ -1,0 +1,43 @@
+
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}GitLab Issue Viewer{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+<header>
+  <div class="container">
+    <div class="row" style="align-items:center">
+      <strong style="flex:unset">GitLab Issue Viewer</strong>
+      <nav class="top" style="text-align:right">
+        {% if session.get('gl') %}
+          <span class="meta" style="color:#cbd5e1;margin-right:12px">
+            {{ session['gl'].get('url') }} as {{ session['gl'].get('username','?') }}
+          </span>
+          <a href="{{ url_for('list_issues') }}">Issues</a>
+          <a href="{{ url_for('roadmap') }}">Roadmap</a>
+          <a href="{{ url_for('logout') }}">Logout</a>
+        {% else %}
+          <a href="{{ url_for('login') }}">Login</a>
+        {% endif %}
+      </nav>
+    </div>
+  </div>
+</header>
+<main class="container">
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      {% for m in messages %}
+        <div class="card" role="alert">{{ m }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+{% block scripts %}{% endblock %}
+</body>
+</html>

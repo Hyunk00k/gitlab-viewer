@@ -1,0 +1,53 @@
+
+{% extends "layout.html" %}
+{% block title %}Issues — GitLab Issue Viewer{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="row">
+    <h2 style="flex:unset">Issues</h2>
+    <a class="badge" href="{{ url_for('index') }}">Change Project</a>
+  </div>
+  <form method="get" action="{{ url_for('list_issues') }}" class="row" style="margin:.5rem 0">
+    <input type="hidden" name="project" value="{{ project_id }}">
+    <input name="q" placeholder="タイトル・本文を検索" value="{{ request.args.get('q', '') }}">
+    <button class="secondary" type="submit">Search</button>
+  </form>
+  <p class="meta">Project: <strong>{{ project_id }}</strong> | Page {{ page }} / 検索対象: タイトル・本文（タスクは一覧から除外）</p>
+
+  {% for issue in issues %}
+    <div class="card">
+      <div class="row">
+        <div style="flex:1">
+          <a href="{{ url_for('view_issue', project_id=project_id, iid=issue['iid']) }}">
+            #{{ issue['iid'] }} — {{ issue['title'] }}
+          </a>
+          {% if issue['state'] %}
+            <span class="badge">{{ issue['state'] }}</span>
+          {% endif %}
+          {% if issue['labels'] %}
+            {% for lb in issue['labels'][:6] %}
+              {% set c = label_map.get(lb, {'color': '#f1f5f9', 'text': '#000'}) %}
+              <span class="badge" style="background: {{ c.color }}; color: {{ c.text }}; border-color: {{ c.color }}">{{ lb }}</span>
+            {% endfor %}
+          {% endif %}
+          <div class="meta" style="display:flex;align-items:center;gap:6px;margin-top:4px">
+            {% if issue.get('author', {}).get('avatar_url') %}
+              <img src="{{ issue['author']['avatar_url'] }}" alt="avatar" style="width:20px;height:20px;border-radius:50%">
+            {% endif %}
+            <span>created {{ issue['created_at'] }} by {{ issue.get('author',{}).get('username','?') }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+
+  <nav class="pager">
+    {% if prev_page %}
+      <a href="{{ url_for('list_issues') }}?project={{ project_id }}&page={{ prev_page }}">← Prev</a>
+    {% else %}<span></span>{% endif %}
+    {% if next_page %}
+      <a href="{{ url_for('list_issues') }}?project={{ project_id }}&page={{ next_page }}">Next →</a>
+    {% endif %}
+  </nav>
+</div>
+{% endblock %}

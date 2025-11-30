@@ -1,0 +1,539 @@
+{% extends 'layout.html' %}
+{% block title %}Roadmap — GitLab Issue Viewer{% endblock %}
+{% block content %}
+<div class='card'>
+  <h2>📊 ロードマップダッシュボード</h2>
+  <p class='meta'>minma-tech グループのEpic進捗状況</p>
+</div>
+
+<div class='roadmap-container'>
+  {% for item in roadmap_data %}
+  <div class='epic-card'>
+    <div class='epic-header' onclick='toggleEpic({{ loop.index0 }})'>
+      <div class='epic-info'>
+        <div class='epic-title'>
+          <span class='accordion-icon' id='icon-{{ loop.index0 }}'>▶</span>
+          <span class='epic-icon'>📋</span>
+          <span class='epic-link'>{{ item.epic.title }}</span>
+        </div>
+        <div class='epic-meta'>
+          <span class='epic-id'>#{{ item.epic.iid }}</span>
+          {% if item.start_date or item.due_date %}
+            <span class='epic-dates'>
+              📅
+              {% if item.start_date %}{{ item.start_date }}{% endif %}
+              {% if item.start_date and item.due_date %} → {% endif %}
+              {% if item.due_date %}{{ item.due_date }}{% endif %}
+            </span>
+          {% endif %}
+          <a href='{{ item.epic.webUrl }}' target='_blank' class='epic-external-link' onclick='event.stopPropagation()'>🔗</a>
+        </div>
+      </div>
+      <div class='epic-status'>
+        {% if item.epic.state == 'opened' %}
+          <span class='status-badge status-open'>Open</span>
+        {% else %}
+          <span class='status-badge status-closed'>Closed</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class='epic-progress' onclick='toggleEpic({{ loop.index0 }})'>
+      <div class='progress-header'>
+        <div class='progress-stats'>
+          <span class='stat-item'>
+            <span class='stat-label'>完了</span>
+            <span class='stat-value stat-closed'>{{ item.closed_count }}</span>
+          </span>
+          <span class='stat-divider'>/</span>
+          <span class='stat-item'>
+            <span class='stat-label'>進行中</span>
+            <span class='stat-value stat-open'>{{ item.opened_count }}</span>
+          </span>
+          <span class='stat-divider'>/</span>
+          <span class='stat-item'>
+            <span class='stat-label'>合計</span>
+            <span class='stat-value'>{{ item.total_count }}</span>
+          </span>
+        </div>
+        <div class='progress-percentage'>{{ item.progress }}%</div>
+      </div>
+      <div class='progress-bar'>
+        <div class='progress-fill' style='width: {{ item.progress }}%'></div>
+      </div>
+    </div>
+
+    <div class='epic-content' id='content-{{ loop.index0 }}' style='display: none;'>
+      {% if item.epic.description %}
+        <div class='epic-description'>
+          {{ item.epic.description[:200] }}{% if item.epic.description|length > 200 %}...{% endif %}
+        </div>
+      {% endif %}
+
+      {% if item.children %}
+        <div class='issues-list'>
+          <div class='issues-header'>
+            <span class='issues-count'>📝 {{ item.children|length }} Issues</span>
+          </div>
+          {% for child in item.children %}
+          <div class='issue-item'>
+            <div class='issue-main'>
+              <div class='issue-status-icon'>
+                {% if child.state == 'opened' %}
+                  <span class='status-dot status-open' title='Open'></span>
+                {% else %}
+                  <span class='status-dot status-closed' title='Closed'></span>
+                {% endif %}
+              </div>
+              <div class='issue-content'>
+                <div class='issue-title-row'>
+                  {% if child.projectId %}
+                    <a href='{{ url_for("view_issue", project_id=child.projectId, iid=child.iid) }}' class='issue-title'>{{ child.title }}</a>
+                  {% else %}
+                    <a href='{{ child.webUrl }}' target='_blank' class='issue-title'>{{ child.title }}</a>
+                  {% endif %}
+                  <span class='issue-id'>#{{ child.iid }}</span>
+                  <a href='{{ child.webUrl }}' target='_blank' class='issue-external-link' title='GitLabで開く'>🔗</a>
+                </div>
+                <div class='issue-metadata'>
+                  {% if child.dueDate %}
+                    <span class='issue-due-date'>
+                      🗓️ {{ child.dueDate }}
+                    </span>
+                  {% endif %}
+                  {% if child.assignees and child.assignees.nodes %}
+                    <span class='issue-assignees'>
+                      👤
+                      {% for assignee in child.assignees.nodes[:3] %}
+                        <span class='assignee-name'>{{ assignee.name }}</span>{% if not loop.last %},{% endif %}
+                      {% endfor %}
+                      {% if child.assignees.nodes|length > 3 %}
+                        <span class='assignee-more'>+{{ child.assignees.nodes|length - 3 }}</span>
+                      {% endif %}
+                    </span>
+                  {% endif %}
+                </div>
+                {% if child.labels and child.labels.nodes %}
+                  <div class='issue-labels'>
+                    {% for label in child.labels.nodes[:5] %}
+                      <span class='label-tag' style='background-color: {{ label.color }}20; border-color: {{ label.color }}; color: {{ label.color }}'>
+                        {{ label.title }}
+                      </span>
+                    {% endfor %}
+                    {% if child.labels.nodes|length > 5 %}
+                      <span class='label-more'>+{{ child.labels.nodes|length - 5 }}</span>
+                    {% endif %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class='no-issues'>
+          <span class='meta'>📭 子アイテムがありません</span>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+  {% if not roadmap_data %}
+  <div class='card'>
+    <p class='meta'>Epicがありません</p>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function toggleEpic(index) {
+  const content = document.getElementById('content-' + index);
+  const icon = document.getElementById('icon-' + index);
+  
+  if (content.style.display === 'none') {
+    content.style.display = 'block';
+    icon.textContent = '▼';
+  } else {
+    content.style.display = 'none';
+    icon.textContent = '▶';
+  }
+}
+</script>
+
+<style>
+.roadmap-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.epic-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  transition: box-shadow 0.2s ease;
+}
+
+.epic-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,.1);
+}
+
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 2px solid #e5e7eb;
+  cursor: pointer;
+  user-select: none;
+}
+
+.epic-header:hover {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e5e7eb 100%);
+}
+
+.epic-info {
+  flex: 1;
+}
+
+.epic-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.accordion-icon {
+  font-size: 14px;
+  color: #64748b;
+  transition: transform 0.2s ease;
+  width: 16px;
+  display: inline-block;
+}
+
+.epic-icon {
+  font-size: 20px;
+}
+
+.epic-link {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.epic-external-link {
+  font-size: 14px;
+  text-decoration: none;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.epic-external-link:hover {
+  opacity: 1;
+}
+
+.epic-meta {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.epic-id {
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.epic-dates {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.epic-status {
+  flex-shrink: 0;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.status-open {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.status-badge.status-closed {
+  background: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+.epic-progress {
+  padding: 20px;
+  background: #fafbfc;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  user-select: none;
+}
+
+.epic-progress:hover {
+  background: #f8fafc;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.progress-stats {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.stat-value.stat-closed {
+  color: #22c55e;
+}
+
+.stat-value.stat-open {
+  color: #3b82f6;
+}
+
+.stat-divider {
+  font-size: 18px;
+  color: #cbd5e1;
+  margin: 0 4px;
+}
+
+.progress-percentage {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 12px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.epic-content {
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.epic-description {
+  padding: 16px 20px;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.6;
+  border-bottom: 1px solid #f1f5f9;
+  background: #fefefe;
+}
+
+.issues-list {
+  padding: 0;
+}
+
+.issues-header {
+  padding: 14px 20px;
+  background: #f8fafc;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.issues-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.issue-item {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f8fafc;
+  transition: background 0.15s ease;
+}
+
+.issue-item:hover {
+  background: #f8fafc;
+}
+
+.issue-item:last-child {
+  border-bottom: none;
+}
+
+.issue-main {
+  display: flex;
+  gap: 12px;
+}
+
+.issue-status-icon {
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.status-dot.status-open {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+}
+
+.status-dot.status-closed {
+  background: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.2);
+}
+
+.issue-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.issue-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.issue-title {
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  flex: 1;
+}
+
+.issue-title:hover {
+  color: #0ea5e9;
+  text-decoration: underline;
+}
+
+.issue-id {
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.issue-external-link {
+  font-size: 12px;
+  text-decoration: none;
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+  flex-shrink: 0;
+}
+
+.issue-external-link:hover {
+  opacity: 1;
+}
+
+.issue-metadata {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.issue-due-date {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.issue-assignees {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.assignee-name {
+  font-weight: 500;
+}
+
+.assignee-more {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.issue-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.label-tag {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid;
+}
+
+.label-more {
+  color: #94a3b8;
+  font-size: 12px;
+  padding: 3px 8px;
+}
+
+.no-issues {
+  padding: 32px 20px;
+  text-align: center;
+}
+</style>
+{% endblock %}

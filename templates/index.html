@@ -1,0 +1,42 @@
+{% extends "layout.html" %}
+{% block title %}Select Project — GitLab Issue Viewer{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>選択中/デフォルトのプロジェクト</h2>
+  <form method="get" action="{{ url_for('list_issues') }}">
+    <label for="project">Project Path or ID</label>
+    <input id="project" name="project" placeholder="e.g., group/subgroup/repo or 278964" value="{{ default_project|default('') }}">
+    <div class="row" style="margin-top:.7rem">
+      <div></div>
+      <button type="submit">Open Issues</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+    <h2 style="margin:0">Project List</h2>
+    <a href="{{ url_for('clear_project_cache') }}" style="text-decoration:none;font-size:1.2rem" title="キャッシュをクリア">🔄</a>
+  </div>
+  {% if projects %}
+  <p class="meta" style="margin-bottom:.5rem">最近アクティブなプロジェクト（最大10件）</p>
+  <ul style="padding-left:18px;margin-top:.5rem">
+    {% for p in projects %}
+      <li>
+        <a href="{{ url_for('list_issues') }}?project={{ p.key }}">
+          {% if p.name_with_namespace %}
+            {{ p.name_with_namespace }}
+          {% else %}
+            {{ p.name }}
+          {% endif %}
+        </a>
+        <span class="meta">({{ p.key }})</span>
+        {% if p.last_activity_at %}
+          <span class="meta"> - {{ p.last_activity_at|format_datetime_jst }}</span>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+{% endblock %}

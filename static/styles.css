@@ -1,0 +1,42 @@
+
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.5;margin:0;background:#f8fafc;color:#0f172a}
+a{color:#0ea5e9;text-decoration:none}a:hover{text-decoration:underline}
+header{background:#0f172a;color:#fff;padding:1rem 1.2rem}
+.container{max-width:980px;margin:0 auto;padding:1rem}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1rem;margin:1rem 0;box-shadow:0 4px 12px rgba(0,0,0,.04)}
+label{display:block;margin:.25rem 0 .35rem;font-weight:600}
+input,select,textarea{width:100%;padding:.6rem .7rem;border:1px solid #cbd5e1;border-radius:10px;background:#fff}
+button{padding:.6rem .9rem;border-radius:10px;border:1px solid #0ea5e9;background:#0ea5e9;color:#fff;font-weight:600;cursor:pointer}
+button.secondary{background:#fff;color:#0ea5e9}
+.row{display:flex;gap:12px;align-items:center}
+.row>*{flex:1}
+.badge{display:inline-block;padding:.2rem .5rem;border-radius:999px;border:1px solid #e5e7eb;background:#f1f5f9;font-size:.83rem}
+.meta{color:#475569;font-size:.9rem}
+nav.pager{display:flex;justify-content:space-between;margin-top:1rem}
+pre{background:#0b1020;color:#d1e9ff;padding:.75rem;border-radius:10px;overflow:auto}
+
+/* --- GitLab-like issue page tuning --- */
+.page { max-width: 1160px; margin: 0 auto; }
+.headerbar{display:flex;align-items:center;gap:12px;padding:14px 16px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;margin:12px 0}
+.header-title{font-size:20px;font-weight:700;margin:0}
+.pill{border-radius:999px; padding:.15rem .6rem; font-weight:600; border:1px solid transparent; font-size:.85rem}
+.pill-open{background:#eaffea;border-color:#22c55e;color:#166534}
+.pill-closed{background:#ffeaea;border-color:#ef4444;color:#7f1d1d}
+.header-sub{color:#475569;font-size:.92rem}
+.grid{display:grid;grid-template-columns: minmax(0,1fr) 320px; gap:16px}
+@media (max-width: 980px){ .grid{grid-template-columns: 1fr} }
+.section{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px}
+.section h3{margin:.1rem 0 10px 0}
+.activity .note{border-top:1px solid #e5e7eb;padding-top:12px;margin-top:12px}
+.note .meta{display:flex;align-items:center;gap:8px;color:#64748b;font-size:.9rem}
+.note .body{margin-top:.35rem}
+.sidebar .block{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-bottom:12px}
+.sidebar .block h4{margin:.2rem 0 .5rem 0}
+.label-chip{display:inline-flex;align-items:center;gap:6px;padding:.2rem .55rem;border-radius:999px;border:1px solid #e5e7eb;background:#f1f5f9;font-size:.85rem}
+.kv{display:grid;grid-template-columns: 96px 1fr; gap:8px; align-items:center}
+.kv div.key{color:#64748b}
+.avatar{width:24px;height:24px;border-radius:50%;object-fit:cover;border:1px solid #e5e7eb}
+.comment-form .actions{display:flex;justify-content:flex-end;margin-top:.6rem}
+.small{font-size:.85rem}
+code{background:#f1f5f9;padding:.1rem .3rem;border-radius:6px}
+
